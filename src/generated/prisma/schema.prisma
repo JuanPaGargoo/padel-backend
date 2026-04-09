@@ -1,0 +1,282 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum MembresiaStatus {
+  activo
+  inactivo
+}
+
+enum ClaseTipo {
+  Principiante
+  Intermedio
+  Avanzado
+  Clinica
+}
+
+enum ReservaClaseStatus {
+  confirmada
+  cancelada
+  pendiente
+}
+
+enum ReservaStatus {
+  confirmada
+  cancelada
+}
+
+enum TorneoCategoria {
+  Varonil
+  Femenil
+  Mixto
+}
+
+enum DuracionMin {
+  SIXTY      @map("60")
+  NINETY     @map("90")
+  ONE_TWENTY @map("120")
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model Estudio {
+  id       Int    @id @default(autoincrement())
+  nombre   String @db.VarChar(100)
+  logo_url String @db.VarChar(255)
+
+  sucursales Sucursal[]
+
+  @@map("estudios")
+}
+
+model Sucursal {
+  id            Int    @id @default(autoincrement())
+  estudio_id    Int
+  nombre        String @db.VarChar(100)
+  direccion     String @db.VarChar(255)
+  ciudad        String @db.VarChar(100)
+  estado        String @db.VarChar(100)
+  codigo_postal String @db.VarChar(10)
+
+  estudio  Estudio   @relation(fields: [estudio_id], references: [id])
+  canchas  Cancha[]
+  coaches  Coach[]
+  clases   Clase[]
+  torneos  Torneo[]
+  usuarios Usuario[]
+
+  @@map("sucursales")
+}
+
+model Usuario {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @db.VarChar(100)
+  celular     String   @db.VarChar(20)
+  email       String   @unique @db.VarChar(100)
+  contrasena  String   @db.VarChar(255)
+  sucursal_id Int
+  created_at  DateTime @default(now())
+
+  sucursal            Sucursal            @relation(fields: [sucursal_id], references: [id])
+  membresias          MembresiaUsuario[]
+  reservas_clase      ReservaClase[]
+  reservas_cancha     ReservaCancha[]
+  reservas_torneo     ReservaTorneo[]
+  lista_espera_clase  ListaEsperaClase[]
+  lista_espera_torneo ListaEsperaTorneo[]
+  lista_espera_cancha ListaEsperaCancha[]
+
+  @@map("usuarios")
+}
+
+model Cancha {
+  id            Int    @id @default(autoincrement())
+  sucursal_id   Int
+  nombre        String @db.VarChar(100)
+  descripcion   String @db.VarChar(255)
+  hora_apertura String @db.VarChar(5)
+  hora_cierre   String @db.VarChar(5)
+  total_slots   Int
+
+  sucursal            Sucursal            @relation(fields: [sucursal_id], references: [id])
+  clases              Clase[]
+  reservas_cancha     ReservaCancha[]
+  lista_espera_cancha ListaEsperaCancha[]
+
+  @@map("canchas")
+}
+
+model Coach {
+  id          Int    @id @default(autoincrement())
+  sucursal_id Int
+  nombre      String @db.VarChar(100)
+  email       String @db.VarChar(100)
+
+  sucursal Sucursal @relation(fields: [sucursal_id], references: [id])
+  clases   Clase[]
+
+  @@map("coaches")
+}
+
+model PlanMembresia {
+  id                Int     @id @default(autoincrement())
+  nombre            String  @db.VarChar(100)
+  clases_incluidas  Int
+  torneos_incluidos Int
+  permite_cancha    Boolean
+  precio            Decimal @db.Decimal(10, 2)
+
+  membresias MembresiaUsuario[]
+
+  @@map("planes_membresia")
+}
+
+model MembresiaUsuario {
+  id                Int             @id @default(autoincrement())
+  usuario_id        Int
+  plan_id           Int
+  fecha_inicio      DateTime        @db.Date
+  fecha_fin         DateTime        @db.Date
+  status            MembresiaStatus
+  clases_restantes  Int
+  torneos_restantes Int
+
+  usuario Usuario       @relation(fields: [usuario_id], references: [id])
+  plan    PlanMembresia @relation(fields: [plan_id], references: [id])
+
+  @@map("membresias_usuario")
+}
+
+model Clase {
+  id               Int       @id @default(autoincrement())
+  sucursal_id      Int
+  coach_id         Int
+  cancha_id        Int
+  tipo             ClaseTipo
+  fecha            DateTime  @db.Date
+  hora_inicio      String    @db.VarChar(5)
+  hora_fin         String    @db.VarChar(5)
+  capacidad_maxima Int
+  capacidad_actual Int       @default(0)
+
+  sucursal       Sucursal           @relation(fields: [sucursal_id], references: [id])
+  coach          Coach              @relation(fields: [coach_id], references: [id])
+  cancha         Cancha             @relation(fields: [cancha_id], references: [id])
+  reservas_clase ReservaClase[]
+  lista_espera   ListaEsperaClase[]
+
+  @@map("clases")
+}
+
+model ReservaClase {
+  id                Int                @id @default(autoincrement())
+  usuario_id        Int
+  clase_id          Int
+  cantidad_personas Int
+  status            ReservaClaseStatus
+  created_at        DateTime           @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id])
+  clase   Clase   @relation(fields: [clase_id], references: [id])
+
+  @@map("reservas_clase")
+}
+
+model ReservaCancha {
+  id           Int           @id @default(autoincrement())
+  usuario_id   Int
+  cancha_id    Int
+  fecha        DateTime      @db.Date
+  hora_inicio  String        @db.VarChar(5)
+  hora_fin     String        @db.VarChar(5)
+  duracion_min DuracionMin
+  status       ReservaStatus
+  created_at   DateTime      @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id])
+  cancha  Cancha  @relation(fields: [cancha_id], references: [id])
+
+  @@map("reservas_cancha")
+}
+
+model Torneo {
+  id                  Int             @id @default(autoincrement())
+  sucursal_id         Int
+  nombre              String          @db.VarChar(100)
+  fecha               DateTime        @db.Date
+  hora_inicio         String          @db.VarChar(5)
+  hora_fin            String          @db.VarChar(5)
+  categoria           TorneoCategoria
+  capacidad_maxima    Int
+  lugares_disponibles Int
+
+  sucursal        Sucursal            @relation(fields: [sucursal_id], references: [id])
+  reservas_torneo ReservaTorneo[]
+  lista_espera    ListaEsperaTorneo[]
+
+  @@map("torneos")
+}
+
+model ReservaTorneo {
+  id         Int           @id @default(autoincrement())
+  usuario_id Int
+  torneo_id  Int
+  status     ReservaStatus
+  created_at DateTime      @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id])
+  torneo  Torneo  @relation(fields: [torneo_id], references: [id])
+
+  @@map("reservas_torneo")
+}
+
+// ─── Listas de espera (del diagrama ER) ──────────────────
+
+model ListaEsperaClase {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  clase_id   Int
+  posicion   Int
+  created_at DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id])
+  clase   Clase   @relation(fields: [clase_id], references: [id])
+
+  @@map("lista_espera_clase")
+}
+
+model ListaEsperaTorneo {
+  id         Int      @id @default(autoincrement())
+  usuario_id Int
+  torneo_id  Int
+  posicion   Int
+  created_at DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id])
+  torneo  Torneo  @relation(fields: [torneo_id], references: [id])
+
+  @@map("lista_espera_torneo")
+}
+
+model ListaEsperaCancha {
+  id          Int      @id @default(autoincrement())
+  usuario_id  Int
+  cancha_id   Int
+  fecha       DateTime @db.Date
+  hora_inicio String   @db.VarChar(5)
+  hora_fin    String   @db.VarChar(5)
+  posicion    Int
+  created_at  DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id])
+  cancha  Cancha  @relation(fields: [cancha_id], references: [id])
+
+  @@map("lista_espera_cancha")
+}
