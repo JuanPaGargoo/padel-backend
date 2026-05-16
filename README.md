@@ -11,6 +11,7 @@ REST API desarrollada con **NestJS**, **Prisma** y **PostgreSQL** para la gesti�
 | Node.js     | 20.x LTS       | https://nodejs.org                  |
 | pnpm        | 9.x            | `npm install -g pnpm`               |
 | PostgreSQL  | 14.x           | https://www.postgresql.org/download |
+| ngrok       | Última estable | https://ngrok.com/download          |
 
 ---
 
@@ -98,6 +99,26 @@ pnpm run start:dev
 ```bash
 pnpm run build
 pnpm run start:prod
+```
+
+### Exponer la API con ngrok
+
+Instala ngrok y configura tu authtoken:
+
+```bash
+ngrok config add-authtoken tu_token
+```
+
+Con el servidor corriendo, expón el puerto definido en `.env`:
+
+```powershell
+ngrok http $Env:PORT
+```
+
+Si no tienes la variable `PORT` cargada en la terminal, usa el valor configurado en `.env`, por ejemplo:
+
+```bash
+ngrok http 3000
 ```
 
 ---
