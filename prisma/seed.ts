@@ -83,6 +83,54 @@ async function main() {
   });
   console.log(`Coach creado: ${coach.nombre} (id: ${coach.id})`);
 
+  // Coach con login (app coachEmails)
+  const coachAppHashed = await bcrypt.hash('Coach123!', 10);
+  const coachApp = await prisma.coach.create({
+    data: {
+      nombre: 'Coach Padel One',
+      email: 'coach@padelone.com',
+      sucursal_id: sucursal.id,
+    },
+  });
+  const coachAppUser = await prisma.usuario.create({
+    data: {
+      nombre: 'Coach Padel One',
+      email: 'coach@padelone.com',
+      celular: '099000001',
+      contrasena: coachAppHashed,
+      sucursal_id: sucursal.id,
+    },
+  });
+  console.log(
+    `Coach app: ${coachApp.email} (coach_id=${coachApp.id}, usuario_id=${coachAppUser.id})`,
+  );
+
+  // Clases asignadas al coach app
+  const hoy = new Date();
+  const tipos: Array<'Principiante' | 'Intermedio' | 'Avanzado' | 'Clinica'> = [
+    'Principiante',
+    'Intermedio',
+    'Avanzado',
+    'Clinica',
+  ];
+  for (let i = 0; i < tipos.length; i++) {
+    const fecha = new Date(hoy);
+    fecha.setDate(fecha.getDate() + i);
+    await prisma.clase.create({
+      data: {
+        sucursal_id: sucursal.id,
+        coach_id: coachApp.id,
+        cancha_id: cancha.id,
+        tipo: tipos[i],
+        fecha,
+        hora_inicio: `${10 + i}:00`,
+        hora_fin: `${11 + i}:00`,
+        capacidad_maxima: 6,
+      },
+    });
+  }
+  console.log(`Clases creadas para ${coachApp.email}: ${tipos.length}`);
+
   // Plan de membresía
   const plan = await prisma.planMembresia.create({
     data: {
@@ -98,8 +146,10 @@ async function main() {
   console.log('\nSeed completado exitosamente!');
   console.log('-----------------------------------');
   console.log('Credenciales de acceso:');
-  console.log('  Email:    admin@padelone.com');
-  console.log('  Password: Admin123!');
+  console.log('  Admin Email:    admin@padelone.com');
+  console.log('  Admin Password: Admin123!');
+  console.log('  Coach Email:    coach@padelone.com');
+  console.log('  Coach Password: Coach123!');
   console.log('-----------------------------------');
 
   await prisma.$disconnect();
